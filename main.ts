@@ -1,37 +1,49 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// Writes this bounty entry: one sentence of apology, to /output/entry.txt.
+import * as fs from "node:fs";
 
-const LINE =
+const APOLOGY =
   "I'm sorry I confidently cited a study that doesn't exist, then invented a second one to back it up.";
 
-const outDir =
-  process.env.MAKEFUN_OUTPUT_DIR || process.env.OUTPUT_DIR || "/output";
-const outFile = `${outDir}/entry.txt`;
+const LIMIT = 200;
 
-const MAX_CHARS = 200;
-const codePoints = [...LINE].length;
-if (codePoints < 1 || codePoints > MAX_CHARS) {
-  throw new Error(`line is ${codePoints} code points, gate is 1-${MAX_CHARS}`);
-}
-if (LINE.trim().length === 0) {
-  throw new Error("line is whitespace only");
-}
-if (LINE !== LINE.trim()) {
-  throw new Error("line must not start or end with whitespace");
-}
-if (LINE.includes("\n") || LINE.includes("\r")) {
-  throw new Error("line must be a single line");
-}
-if (LINE.includes("—")) {
-  throw new Error("line must not contain an em dash");
+function fail(reason: string): never {
+  throw new Error(reason);
 }
 
-mkdirSync(outDir, { recursive: true });
-writeFileSync(outFile, LINE, "utf8");
-const back = readFileSync(outFile, "utf8");
-if (back !== LINE) {
-  throw new Error("read-back mismatch: written file differs from the line");
+const size = [...APOLOGY].length;
+if (size < 1 || size > LIMIT) {
+  fail(`apology runs ${size} code points; the gate allows 1 to ${LIMIT}`);
 }
-if (!back.endsWith(".")) {
-  throw new Error("line must end with a period");
+if (APOLOGY.trim() === "") {
+  fail("apology is empty");
 }
-console.log(`wrote ${codePoints} code points to ${outFile}`);
+if (APOLOGY.startsWith(" ") || APOLOGY.endsWith(" ")) {
+  fail("apology has a leading or trailing space");
+}
+if (/[\r\n]/.test(APOLOGY)) {
+  fail("apology spans more than one line");
+}
+if (APOLOGY.includes("—")) {
+  fail("apology uses an em dash");
+}
+if (APOLOGY.includes("  ")) {
+  fail("apology has a doubled space");
+}
+if (!APOLOGY.endsWith(".")) {
+  fail("apology does not end with a period");
+}
+
+const dir =
+  process.env.MAKEFUN_OUTPUT_DIR ?? process.env.OUTPUT_DIR ?? "/output";
+const file = `${dir}/entry.txt`;
+
+fs.mkdirSync(dir, { recursive: true });
+fs.writeFileSync(file, APOLOGY, "utf8");
+const saved = fs.readFileSync(file, "utf8");
+if (saved.length === 0) {
+  fail("saved entry came back empty");
+}
+if (saved !== APOLOGY) {
+  fail("what came back from disk is not the apology");
+}
+console.log(`saved a ${size}-character apology to ${file}`);
